@@ -1,0 +1,15 @@
+[package]
+name = "sm"
+version = "0.1.0"
+authors = ["Cecilia Carneiro e Silva <cecilia.carneiroesilva@gmail.com>"]
+description = "SM crate for RTFM"
+
+[dependencies]
+sm_macro = { version = "0.1", path = "../sm_macro", optional = true }
+
+[dev-dependencies]
+sm_macro = { version = "0.1", path = "../sm_macro" }
+
+[features]
+macro = ["sm_macro"]
+default = ["macro"]

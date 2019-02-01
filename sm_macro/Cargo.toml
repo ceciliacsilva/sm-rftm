@@ -1,0 +1,17 @@
+[package]
+name = "sm_macro"
+version = "0.1.0"
+authors = ["Cecilia Carneiro e Silva <cecilia.carneiroesilva@gmail.com>"]
+description = "SM crate for RTFM"
+keywords = ["fsm", "state", "state-machine"]
+
+[dependencies]
+proc-macro2 = "0.4"
+quote = "0.6"
+syn = "0.15"
+
+[dev-dependencies]
+sm = { version = "0.1", path = "../sm" }
+
+[lib]
+proc-macro = true
