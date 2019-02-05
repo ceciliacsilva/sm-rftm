@@ -18,7 +18,6 @@
     macro_use_extern_crate,
     missing_copy_implementations,
     missing_debug_implementations,
-    missing_docs,
     nonstandard_style,
     rust_2018_compatibility,
     single_use_lifetimes,
@@ -36,7 +35,6 @@
     unused_results,
     unused,
 )]
-#![feature(tool_lints)]
 #![deny(clippy::all)]
 
 use core::fmt;

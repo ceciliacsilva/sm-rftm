@@ -1,8 +1,5 @@
 //! This is a support crate that contains the function-like procedural macro to
-//! build state machines using the [sm] crate. All documentation lives in that
-//! crate.
-//!
-//! [sm]: https://docs.rs/sm
+//! build state machines using the [sm] crate. 
 
 #![no_std]
 // quote! macro needs a higher recursion limit
@@ -22,7 +19,6 @@
     variant_size_differences,
 )]
 #![warn(
-    missing_docs,
     non_snake_case,
     rust_2018_idioms,
     single_use_lifetimes,
@@ -32,7 +28,6 @@
     unused_results,
     unused,
 )]
-#![feature(tool_lints)]
 #![deny(clippy::all)]
 
 extern crate alloc;

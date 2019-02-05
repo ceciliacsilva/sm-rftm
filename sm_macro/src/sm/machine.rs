@@ -8,7 +8,7 @@ use crate::sm::event::{Event, Events};
 use crate::sm::initial_state::InitialStates;
 use crate::sm::state::{State, States};
 use crate::sm::transition::Transitions;
-use crate::sm::resources::{Guard, Action, Guards, Actions};
+use crate::sm::resources::{Action, Guard, Guards, Actions};
 
 #[derive(Debug, PartialEq)]
 pub struct Machines(pub Vec<Machine>);
@@ -248,6 +248,7 @@ pub struct MachineEval<'a> {
     pub machine: &'a Machine,
 }
 
+#[allow(single_use_lifetimes)]
 impl<'a> MachineEval<'a> {
     fn filter_transitions_from(&self, state: &State) -> Vec<Event> {
         let mut result: Vec<Event> = Vec::new();
@@ -295,7 +296,7 @@ impl<'a> MachineEval<'a> {
 #[allow(single_use_lifetimes)]
 impl<'a> ToTokens for MachineEval<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let name = &self.machine.name;
+        let _name = &self.machine.name;
         let guard_resources = &self.machine.guard_resources;
         let action_resources = &self.machine.action_resources;
 
@@ -367,7 +368,6 @@ impl<'a> ToTokens for MachineEval<'a> {
                     let new_sm =
                         match sm {
                             #(#m_variants)*
-                            // _ => self,
                         };
 
                     new_sm
@@ -669,7 +669,7 @@ mod tests {
                 impl AsEnum for Machine<Locked, Push> {
                     type Enum = Variant;
 
-                    fn as_enum(&self) -> Self::Enum {
+                    fn as_enum(self) -> Self::Enum {
                         Variant::LockedByPush(self)
                     }
                 }
@@ -677,49 +677,45 @@ mod tests {
                 impl<E: Event> Transition<Push> for Machine<Unlocked, E> {
                     type Machine = Machine<Locked, Push>;
 
-                    fn transition(self, event: Push) -> Self::Machine {
+                    fn transition(&self, event: Push) -> Self::Machine {
                         Machine(Locked, Some(event))
                     }
                 }
-            }
 
-            pub trait ValidEvent {
-                fn is_enabled ( a : u8 , b: u16, ) -> bool ;
-                fn action (led: Led, max: u16 , ) ;
-            }
+                pub trait ValidEvent {
+                    fn is_enabled ( a : crate::u8 , b: crate::u16, ) -> bool ;
+                    fn action (led: crate::Led, max: crate::u16 , ) ;
+                }
 
-            pub trait MachineEvaluation {
-                fn eval_machine(self, a: u8, b: u16, led: Led, max: u16,) -> Self;
-            }
+                pub trait MachineEvaluation {
+                    fn eval_machine(sm: &mut Variant, a: crate::u8, b: crate::u16, led: crate::Led, max: crate::u16,) -> Self;
+                }
 
-            use crate::TurnStile::Variant;
-            use crate::TurnStile::Push;
-            impl MachineEvaluation for crate::TurnStile::Variant {
-                fn eval_machine(self, a: u8, b: u16, led: Led, max: u16,) -> Self {
-                    let new_sm =
-                        match self {
-                            Variant::InitialLocked(m) => {
-                                m.as_enum(),
-                            },
-                            Variant::LockedByPush(m) => {
-                                m.as_enum(),
-                            },
-                            Variant::InitialUnlocked(m) => {
-                                if Push::is_enabled(a,b) {
-                                    Push::action(led, max);
-                                    m.transition(Push).as_enum()
-                                }
-                                else {
-                                    m.as_enum()
-                                }
-                            },
-                            _ => self,
-                        };
+                impl MachineEvaluation for Variant {
+                    fn eval_machine(sm: &mut Variant, a: crate::u8, b: crate::u16, led: crate::Led, max: crate::u16,) -> Self {
+                        let new_sm =
+                            match sm {
+                                Variant::InitialLocked(m) => {
+                                    Machine(Locked, Some(NoneEvent)).as_enum()
+                                },
+                                Variant::LockedByPush(m) => {
+                                    Machine(Locked, Some(Push)).as_enum()
+                                },
+                                Variant::InitialUnlocked(m) => {
+                                    if Push::is_enabled(a,b) {
+                                        Push::action(led, max);
+                                        m.transition(Push).as_enum()
+                                    }
+                                    else {
+                                        Machine(Unlocked, Some(NoneEvent)).as_enum()
+                                    }
+                                },
+                            };
 
-                    new_sm
+                        new_sm
+                    }
                 }
             }
-
         };
 
         let mut right = TokenStream::new();

@@ -1,10 +1,7 @@
 use alloc::vec::Vec;
-use alloc::{format};
-use proc_macro2::Span;
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
 use syn::parse::{Parse, ParseStream, Result};
-use syn::token::Comma;
 use syn::{Ident, braced, Token};
 
 #[derive(Debug, Clone, PartialEq)]

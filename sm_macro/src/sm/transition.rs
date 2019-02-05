@@ -2,7 +2,6 @@ use alloc::vec::Vec;
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::parse::{Parse, ParseStream, Result};
-use syn::token::Comma;
 use syn::{braced, Token};
 
 use crate::sm::event::Event;
@@ -96,7 +95,7 @@ mod tests {
             impl<E: Event> Transition<Push> for Machine<Locked, E> {
                 type Machine = Machine<Unlocked, Push>;
 
-                fn transition(self, event: Push) -> Self::Machine {
+                fn transition(&self, event: Push) -> Self::Machine {
                     Machine(Unlocked, Some(event))
                 }
             }
@@ -174,7 +173,7 @@ mod tests {
             impl<E: Event> Transition<Push> for Machine<Unlocked, E> {
                 type Machine = Machine<Locked, Push>;
 
-                fn transition(self, event: Push) -> Self::Machine {
+                fn transition(&self, event: Push) -> Self::Machine {
                     Machine(Locked, Some(event))
                 }
             }
@@ -182,7 +181,7 @@ mod tests {
             impl<E: Event> Transition<Coin> for Machine<Locked, E> {
                 type Machine = Machine<Unlocked, Coin>;
 
-                fn transition(self, event: Coin) -> Self::Machine {
+                fn transition(&self, event: Coin) -> Self::Machine {
                     Machine(Unlocked, Some(event))
                 }
             }
