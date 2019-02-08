@@ -233,7 +233,11 @@ impl ToTokens for Machine {
                     fn action(#action_resources);
                 }
                 pub trait MachineEvaluation {
-                    fn eval_machine(sm: &mut Variant, #guard_resources #action_resources) -> Self;
+                    fn eval_machine(&mut self, #guard_resources #action_resources) -> Result<(), ()>;
+                }
+
+                fn bool_to_u8(b: bool) -> u8 {
+                    if b { 1 } else { 0 }
                 }
 
                 #machine_eval
@@ -310,7 +314,7 @@ impl<'a> ToTokens for MachineEval<'a> {
 
             for (v, e) in variants_none {
                 m_variants.push(quote!(
-                    Variant::#v(m) => { Machine(#name_state, Some(#e)).as_enum() },
+                    Variant::#v(m) => { Ok(Machine(#name_state, Some(#e)).as_enum()) },
                 ));
             }
         }
@@ -323,6 +327,7 @@ impl<'a> ToTokens for MachineEval<'a> {
             for (v, e) in variants_events {
                 let mut m_guards = Vec::new();
                 let transitions = &self.filter_transitions_from(s);
+                let mut determinism_condition = Vec::new();
 
                 for (i, t) in transitions.iter().enumerate() {
                     let name = t.name.clone();
@@ -331,18 +336,27 @@ impl<'a> ToTokens for MachineEval<'a> {
                     let result = quote!(#name::is_enabled(#(#names_vars_guard),*));
 
                     if i == 0 {
+                        determinism_condition.push(quote!(
+                            bool_to_u8(#result)
+                        ));
+                    } else {
+                        determinism_condition.push(quote!(
+                           + bool_to_u8(#result)
+                        ));
+                    }
+
+                    if i == 0 {
                         m_guards.push(quote!(
                             if #result {
                                 #name::action(#(#names_vars_action),*);
-                                m.transition(#name).as_enum()
+                                Ok(m.transition(#name).as_enum())
                             }
                         ));
-                    }
-                    else {
+                    } else {
                         m_guards.push(quote!(
                             else if #result {
                                 #name::action(#(#names_vars_action),*);
-                                m.transition(#name).as_enum()
+                                Ok(m.transition(#name).as_enum())
                             }
                         ));
                     }
@@ -350,13 +364,19 @@ impl<'a> ToTokens for MachineEval<'a> {
 
                 m_guards.push(quote!(
                     else {
-                        Machine(#name_state, Some(#e)).as_enum()
+                        Ok(Machine(#name_state, Some(#e)).as_enum())
                     }
                 ));
 
                 m_variants.push(quote!(
                     Variant::#v(m) => {
-                        #(#m_guards)*
+                        let cnt = #(#determinism_condition)*;
+
+                        if cnt < 2 {
+                            #(#m_guards)*
+                        } else {
+                            Err(Machine(#name_state, Some(#e)).as_enum())
+                        }
                     },
                 ));
             }
@@ -364,13 +384,22 @@ impl<'a> ToTokens for MachineEval<'a> {
 
         tokens.extend(quote!{
             impl MachineEvaluation for Variant {
-                fn eval_machine(sm: &mut Variant, #guard_resources #action_resources) -> Self {
-                    let new_sm =
-                        match sm {
+                fn eval_machine(&mut self, #guard_resources #action_resources) -> Result<(), ()> {
+                    let result_sm =
+                        match self {
                             #(#m_variants)*
                         };
 
-                    new_sm
+                    match result_sm {
+                        Ok(new_sm) => {
+                            *self = new_sm;
+                            Ok(())
+                        },
+                        Err(same_sm) => {
+                            *self = same_sm;
+                            Err(())
+                        }
+                    }
                 }
             }
         });
@@ -688,31 +717,48 @@ mod tests {
                 }
 
                 pub trait MachineEvaluation {
-                    fn eval_machine(sm: &mut Variant, a: crate::u8, b: crate::u16, led: crate::Led, max: crate::u16,) -> Self;
+                    fn eval_machine(&mut self, a: crate::u8, b: crate::u16, led: crate::Led, max: crate::u16,) -> Result<(), ()>;
+                }
+                fn bool_to_u8 (b: bool) -> u8 {
+                    if b { 1 } else { 0 }
                 }
 
                 impl MachineEvaluation for Variant {
-                    fn eval_machine(sm: &mut Variant, a: crate::u8, b: crate::u16, led: crate::Led, max: crate::u16,) -> Self {
-                        let new_sm =
-                            match sm {
+                    fn eval_machine(&mut self, a: crate::u8, b: crate::u16, led: crate::Led, max: crate::u16,) -> Result<(), ()> {
+                        let result_sm =
+                            match self {
                                 Variant::InitialLocked(m) => {
-                                    Machine(Locked, Some(NoneEvent)).as_enum()
+                                    Ok(Machine(Locked, Some(NoneEvent)).as_enum())
                                 },
                                 Variant::LockedByPush(m) => {
-                                    Machine(Locked, Some(Push)).as_enum()
+                                    Ok(Machine(Locked, Some(Push)).as_enum())
                                 },
                                 Variant::InitialUnlocked(m) => {
-                                    if Push::is_enabled(a,b) {
-                                        Push::action(led, max);
-                                        m.transition(Push).as_enum()
-                                    }
-                                    else {
-                                        Machine(Unlocked, Some(NoneEvent)).as_enum()
+                                    let cnt = bool_to_u8(Push::is_enabled(a, b));
+
+                                    if cnt < 2 {
+                                        if Push::is_enabled(a,b) {
+                                            Push::action(led, max);
+                                            Ok(m.transition(Push).as_enum())
+                                        } else {
+                                            Ok(Machine(Unlocked, Some(NoneEvent)).as_enum())
+                                        }
+                                    } else {
+                                        Err(Machine(Unlocked, Some(NoneEvent)).as_enum())
                                     }
                                 },
                             };
 
-                        new_sm
+                        match result_sm {
+                            Ok(new_sm) => {
+                                *self = new_sm;
+                                Ok(())
+                            },
+                            Err(same_sm) => {
+                                *self = same_sm;
+                                Err(())
+                            }
+                        }
                     }
                 }
             }

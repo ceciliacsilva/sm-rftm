@@ -9,6 +9,7 @@ sm_macro = { version = "0.1", path = "../sm_macro", optional = true }
 
 [dev-dependencies]
 sm_macro = { version = "0.1", path = "../sm_macro" }
+compiletest_rs = { version = "*" }
 
 [features]
 macro = ["sm_macro"]
