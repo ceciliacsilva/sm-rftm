@@ -29,8 +29,8 @@ sm! {
 fn main() {
     use Lock::*;
 
-    let mut sm = Machine::new(Locked).as_enum();
-    let result = sm.eval_machine(0, 0);
+    let mut fsm = Machine::new(Locked).as_enum();
+    let result = fsm.eval_machine(0, 0);
     match result {
         Ok(_) => println!("Ok"),
         Err(_) => println!("Err"),
@@ -54,7 +54,6 @@ impl Lock::ValidEvent for Lock::Push {
         println!("{}", led);
     }
 }
-
 
 impl Lock2::ValidEvent for Lock2::Coin {
     fn is_enabled(_a: U8) -> bool {
